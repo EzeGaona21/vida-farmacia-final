@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iniciar sesión — Vida+</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="Inicia sesión para gestionar productos y pedidos en Vida+." />
+</head>
+<body>
+
+  <!-- Barra superior simple -->
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo">V</div>
+        <span>Vida+</span>
+      </div>
+      <nav class="nav-links">
+        <a class="btn btn-ghost" href="index.html">Volver al inicio</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Sección central de login -->
+  <main>
+    <section class="hero" style="min-height: calc(100vh - 80px); display:flex; align-items:center;">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">Acceso al panel</span>
+          <h1>Inicia sesión en <span style="color:var(--brand)">Vida+</span></h1>
+          <p class="lead">
+            Ingresa con tu cuenta de <strong>administrador</strong> o <strong>empleado</strong> 
+            para gestionar los productos de la farmacia.
+          </p>
+          <ul class="muted" style="margin-top:12px;line-height:1.6;">
+            <li>👨‍⚕️ <strong>ADMIN</strong>: puede agregar, editar y eliminar productos.</li>
+            <li>👩‍💼 <strong>EMPLEADO</strong>: puede visualizar el stock y la información.</li>
+          </ul>
+        </div>
+
+        <div class="hero-card" style="max-width:420px; margin-inline:auto;">
+          <h2 style="margin-bottom:16px;">Iniciar sesión</h2>
+
+          <form id="loginForm" style="display:flex;flex-direction:column;gap:10px;">
+            <label for="email">Correo electrónico</label>
+            <input 
+              type="email"
+              id="email"
+              required
+              placeholder="admin@farmacia.com"
+              style="padding:10px;border-radius:8px;border:1px solid #ccc;"
+            />
+
+            <label for="password">Contraseña</label>
+            <input 
+              type="password"
+              id="password"
+              required
+              placeholder="••••••"
+              style="padding:10px;border-radius:8px;border:1px solid #ccc;"
+            />
+
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;">
+              Ingresar
+            </button>
+          </form>
+
+          <!-- Mensajes de error/estado -->
+          <p id="loginMsg" class="muted" style="margin-top:10px;min-height:20px;"></p>
+
+          <!-- Usuarios de prueba para el final -->
+          <div class="card" style="margin-top:16px;font-size:13px;">
+            <p class="muted" style="margin-bottom:4px;">Usuarios de ejemplo:</p>
+            <p>👨‍⚕️ <strong>Admin</strong>: <code>admin@farmacia.com</code> / <code>123456</code></p>
+            <p>👩‍💼 <strong>Empleado</strong>: <code>empleado@farmacia.com</code> / <code>123456</code></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="about">
+    <div class="container" style="display:grid;gap:10px">
+      <small>© 2025 Vida+ — Todos los derechos reservados.</small>
+    </div>
+  </footer>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const msg = document.getElementById("loginMsg");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      msg.textContent = "Validando credenciales...";
+      msg.style.color = "var(--text-muted, #555)";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      try {
+        const res = await fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          msg.textContent = data.error;
+          msg.style.color = "#b00020";
+          return;
+        }
+
+        // Guardar usuario en localStorage
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        msg.textContent = "Inicio de sesión exitoso, redirigiendo...";
+        msg.style.color = "green";
+
+        // Redirigir al index (panel principal)
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 800);
+
+      } catch (error) {
+        console.error(error);
+        msg.textContent = "Error al conectar con el servidor.";
+        msg.style.color = "#b00020";
+      }
+    });
+  </script>
+</body>
+</html>

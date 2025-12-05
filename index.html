@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vida+ — Tu Farmacia Online</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="Vida+ conecta clientes con productos de salud, medicamentos y suplementos en línea." />
+</head>
+
+<body>
+  <!-- Header -->
+  <header>
+    <div class="container nav">
+      <div class="brand">
+        <div class="logo">V</div>
+        <span>Vida+</span>
+      </div>
+
+      <div class="search">
+        <input aria-label="Buscar" placeholder="Buscar medicamentos, suplementos…" />
+      </div>
+
+      <nav class="nav-links">
+        <a class="btn btn-ghost" href="#">Ayuda</a>
+        <a class="btn btn-ghost" href="#about">Acerca</a>
+        <button onclick="logout()" class="btn btn-ghost">Cerrar sesión</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="eyebrow">Tu farmacia online</span>
+        <h1>Bienvenido a <span style="color:var(--brand)">Vida+</span></h1>
+        <p class="lead">Compra tus <strong>medicamentos</strong>, <strong>vitaminas</strong> y
+          <strong>productos de salud</strong> sin salir de casa.</p>
+        <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+          <a class="btn btn-primary" href="#productos-lista">Ver productos</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <img src="farmacia-logo-1.jpg" alt="Logo farmacia"
+          style="max-width:100%; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15)">
+      </div>
+    </div>
+  </section>
+
+  <!-- Productos (CRUD completo) -->
+  <section id="productos-lista">
+    <div class="container">
+      <h2 class="section-title">Productos disponibles</h2>
+
+      <!-- Donde se cargan las cards -->
+      <div id="lista-productos" class="grid-3" style="margin-top:20px;"></div>
+
+      <!-- Botón agregar (solo ADMIN) -->
+      <button id="btnAgregarProducto" class="btn btn-primary" style="margin-top:25px;">Agregar Producto</button>
+
+      <!-- Formulario para crear / editar -->
+      <div id="formProductoWrapper" class="card"
+        style="margin-top:20px; padding:20px; max-width:480px; display:none;">
+        <h3 id="formTitulo">Nuevo producto</h3>
+
+        <form id="formProducto" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+          <input type="text" id="prodNombre" placeholder="Nombre del producto" required
+            style="padding:8px;border-radius:8px;border:1px solid #ccc;">
+          <input type="text" id="prodDescripcion" placeholder="Descripción"
+            style="padding:8px;border-radius:8px;border:1px solid #ccc;">
+          <input type="number" id="prodPrecio" placeholder="Precio" required
+            style="padding:8px;border-radius:8px;border:1px solid #ccc;">
+          <input type="number" id="prodStock" placeholder="Stock" required
+            style="padding:8px;border-radius:8px;border:1px solid #ccc;">
+          <input type="text" id="prodCategoria" placeholder="Categoría"
+            style="padding:8px;border-radius:8px;border:1px solid #ccc;">
+
+          <div style="display:flex; gap:10px; margin-top:10px;">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" id="btnCancelarForm" class="btn btn-ghost">Cancelar</button>
+          </div>
+        </form>
+
+        <p id="msgFormProducto" class="muted" style="margin-top:10px;"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer id="about" style="margin-top:80px;">
+    <div class="container" style="display:grid;gap:10px">
+      <nav style="display:flex;gap:18px;flex-wrap:wrap">
+        <a href="#">Acerca de</a>
+        <a href="#">Contacto</a>
+        <a href="#">FAQ</a>
+      </nav>
+      <small>© 2025 Vida+ — Todos los derechos reservados.</small>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    const userLogged = JSON.parse(localStorage.getItem("user"));
+    let modoFormulario = "crear";
+    let idEditando = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+      // Protección: si no hay usuario logueado → volver a login
+      if (!userLogged) location.href = "login.html";
+
+      const btnAgregar = document.getElementById("btnAgregarProducto");
+      const formWrapper = document.getElementById("formProductoWrapper");
+      const form = document.getElementById("formProducto");
+      const btnCancelarForm = document.getElementById("btnCancelarForm");
+
+      // Ocultar botón si no es ADMIN
+      if (userLogged.rol !== "ADMIN") {
+        btnAgregar.style.display = "none";
+      }
+
+      cargarProductos();
+
+      btnAgregar.addEventListener("click", () => {
+        modoFormulario = "crear";
+        idEditando = null;
+        form.reset();
+        document.getElementById("formTitulo").textContent = "Nuevo producto";
+        formWrapper.style.display = "block";
+      });
+
+      btnCancelarForm.addEventListener("click", () => {
+        formWrapper.style.display = "none";
+        form.reset();
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById("msgFormProducto");
+
+        const nuevo = {
+          nombre: prodNombre.value,
+          descripcion: prodDescripcion.value,
+          precio: Number(prodPrecio.value),
+          stock: Number(prodStock.value),
+          categoria: prodCategoria.value
+        };
+
+        let url = "/api/productos";
+        let method = "POST";
+
+        if (modoFormulario === "editar" && idEditando !== null) {
+          url = `/api/productos/${idEditando}`;
+          method = "PUT";
+        }
+
+        const r = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nuevo)
+        });
+
+        const data = await r.json();
+
+        if (!r.ok) {
+          msg.textContent = data.error || "Error al guardar";
+          msg.style.color = "red";
+          return;
+        }
+
+        msg.textContent = data.message;
+        msg.style.color = "green";
+
+        await cargarProductos();
+        setTimeout(() => formWrapper.style.display = "none", 700);
+      });
+    });
+
+    // CARGAR PRODUCTOS DESDE BACKEND
+    async function cargarProductos() {
+      const res = await fetch("/api/productos");
+      const productos = await res.json();
+      const cont = document.getElementById("lista-productos");
+
+      cont.innerHTML = "";
+
+      productos.forEach(p => {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${p.nombre}</h3>
+          <p class="muted">${p.descripcion || ""}</p>
+          <p><strong>Precio:</strong> $${p.precio}</p>
+          <p><strong>Stock:</strong> ${p.stock}</p>
+          <p><strong>Categoría:</strong> ${p.categoria}</p>
+        `;
+
+        // ADMIN → Editar + Eliminar
+        if (userLogged.rol === "ADMIN") {
+          const btns = document.createElement("div");
+          btns.style.marginTop = "10px";
+          btns.style.display = "flex";
+          btns.style.gap = "8px";
+
+          const btnEdit = document.createElement("button");
+          btnEdit.textContent = "Editar";
+          btnEdit.className = "btn btn-ghost";
+          btnEdit.onclick = () => abrirEdicion(p);
+
+          const btnDel = document.createElement("button");
+          btnDel.textContent = "Eliminar";
+          btnDel.className = "btn btn-ghost";
+          btnDel.onclick = () => eliminarProducto(p.id);
+
+          btns.append(btnEdit, btnDel);
+          card.append(btns);
+        }
+
+        cont.appendChild(card);
+      });
+    }
+
+    function abrirEdicion(p) {
+      modoFormulario = "editar";
+      idEditando = p.id;
+
+      prodNombre.value = p.nombre;
+      prodDescripcion.value = p.descripcion;
+      prodPrecio.value = p.precio;
+      prodStock.value = p.stock;
+      prodCategoria.value = p.categoria;
+
+      document.getElementById("formTitulo").textContent = "Editar producto";
+      document.getElementById("formProductoWrapper").style.display = "block";
+    }
+
+    async function eliminarProducto(id) {
+      if (!confirm("¿Seguro que querés eliminar este producto?")) return;
+
+      const res = await fetch(`/api/productos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
+      alert(data.message);
+      cargarProductos();
+    }
+
+    function logout() {
+      localStorage.removeItem("user");
+      location.href = "login.html";
+    }
+  </script>
+
+</body>
+</html>
